@@ -1,0 +1,184 @@
+package Hackathon_Pkg;
+
+import java.util.concurrent.TimeUnit;
+
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.Wait;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.sql.*;
+import java.sql.*;
+
+public class Hackathon_Class {
+    static WebDriver driver;
+    static Wait<WebDriver> wait;
+
+    public static void main(String[] args) {
+
+  
+        driver = new FirefoxDriver();
+        wait = new WebDriverWait(driver, 30);
+        
+        boolean result;
+        try {
+           result=CallTravis();
+        } catch(Exception e) {
+            e.printStackTrace();
+            result = false;
+        } finally {
+            driver.close();
+            driver.quit();
+        }
+        System.out.println("Test " + (result? "PASSED" : "FAILED"));
+        if (!result) {
+            System.exit(1);
+        }
+    }
+
+    private static boolean CallTravis() {
+    	driver.get("https://travis-ci.org/");
+    	driver.manage().timeouts().implicitlyWait(20,TimeUnit.SECONDS);
+    	driver.findElement(By.xpath("/html/body/div/div/div[2]/div[1]/div/div[1]/button")).click();
+     	//driver.findElement(By.cssSelector("button.signed-out")).click();
+        driver.findElement(By.id("login_field")).sendKeys("jackchem2003");
+        driver.findElement(By.id("password")).sendKeys("Geetha143");
+        driver.findElement(By.xpath("/html/body/div[4]/div[1]/div/form/div[3]/input[4]")).click();
+        boolean travis_succ=driver.findElement(By.cssSelector(".ember-view")).isDisplayed();
+        if (driver.findElement(By.cssSelector(".ember-view")).getText()=="CI_Jmeter")
+        {
+        	Jmeter_Func();
+        }
+        else
+        {
+        	String[] Testcases = {"Fosimple","Fosimple_Fields"};
+        	for(int i=0;i<Testcases.length;i++)
+        	{
+        		if (i>0)
+        		{
+        			driver.get("https://travis-ci.org/");
+        	    	driver.manage().timeouts().implicitlyWait(20,TimeUnit.SECONDS);
+        	    	driver.findElement(By.xpath("/html/body/div/div/div[2]/div[1]/div/div[1]/button")).click();
+        	     	//driver.findElement(By.cssSelector("button.signed-out")).click();
+        	        //driver.findElement(By.id("login_field")).sendKeys("jackchem2003");
+        	        //driver.findElement(By.id("password")).sendKeys("Geetha143");
+        	        //driver.findElement(By.xpath("/html/body/div[4]/div[1]/div/form/div[3]/input[4]")).click();
+         		}
+        		Selenium_Func(Testcases[i]);
+        	}
+        }     
+        return travis_succ;
+    }
+    
+public static void Jmeter_Func()
+{
+	System.out.println("Jmeter Test");
+    String Jmeter_Summ = driver.findElement(By.xpath("/html/body/div/div/div/div/div/div/div/article/div/div[2]/div/div[2]/div/section/div/div/pre/p[40]/span")).getText();
+    System.out.println(Jmeter_Summ);
+   // dbinsert('J',Jmeter_Summ);
+    
+}
+public static void Selenium_Func(String tc)
+{
+	String testcase=tc;
+	String Build_Id=driver.findElement(By.cssSelector(".commit")).getText();
+    System.out.println(Build_Id);
+	System.out.println("Selenium Test");
+	driver.findElement(By.cssSelector(".icon--downloadLog")).click();
+	String Logs=driver.findElement(By.tagName("body")).getText();
+
+	String testpattern=testcase+": [31mTest";
+
+	int ind=Logs.indexOf(testpattern);
+	int status_index=ind+testpattern.length()+1;
+	
+	String Status=Logs.substring(status_index,status_index+6);
+	String Defect_Summ=testcase+" : "+Status;
+	System.out.println(Defect_Summ);
+		
+	if (Status.equals("failed"))
+	{
+		int Desc_Beg_in=status_index+13;
+		String word=Logs.substring(status_index,status_index+6);
+		status_index=status_index+1;
+		while (!word.equals("Selenium"))
+		{
+			word=Logs.substring(status_index,status_index+8);
+			int Desc_End_in=status_index;
+			status_index=status_index+1;
+		}
+		String Defect_Desc=Logs.substring(Desc_Beg_in,status_index-1);
+		System.out.println(Defect_Desc);
+		Jira_Defects(Defect_Desc,Defect_Summ,Build_Id);
+		
+	}
+	else
+	{
+		String Defect_Desc="The Test Case Passed";
+		//dbinsert("Selenium",Defect_Summ,Defect_Desc,Build_Id,"Passed","");
+	}	
+	//driver.navigate().back();
+}
+public static void Jira_Defects(String defect_Desc,String Defect_Summ, String Build_Id)
+{
+
+	System.out.println("Logging In JIRA");
+	driver.get("https://qahacker.atlassian.net/");
+	//driver.findElement(By.cssSelector(".login-link")).click();
+	driver.findElement(By.id("username")).sendKeys("sujoysengupta05@gmail.com");
+	driver.findElement(By.id("password")).sendKeys("05yojus93");
+	driver.findElement(By.id("login")).click();
+	driver.findElement(By.id("quickSearchInput")).sendKeys(Defect_Summ);
+    driver.findElement(By.id("quickSearchInput")).sendKeys(Keys.ENTER);
+    Boolean isPresent = driver.findElements(By.cssSelector(".issue-link")).isEmpty();
+    System.out.println(isPresent);
+    if (isPresent==false)
+    {
+    	Boolean status_Check=driver.findElement(By.cssSelector(".jira-issue-status-lozenge")).getText().contains("DONE");
+    	System.out.println(driver.findElement(By.cssSelector(".jira-issue-status-lozenge")).getText());
+    	System.out.println(status_Check);
+    	if (status_Check==true)
+    	{
+    		defect_Creation(defect_Desc,Defect_Summ,Build_Id);
+    	}
+    	else
+    	{
+    		String defectId=driver.findElement(By.cssSelector(".issue-link")).getText();
+    		System.out.println(defectId);
+    	}   	
+    }
+    else
+    {
+    	defect_Creation(defect_Desc,Defect_Summ,Build_Id);
+    }    			   
+}
+public static void defect_Creation(String defect_Desc,String Defect_Summ,String Build_Id)
+{  
+	System.out.println("Creating JIRA Defect");
+    driver.findElement(By.id("create_link")).click();
+    driver.findElement(By.id("issuetype-field")).clear();
+    driver.findElement(By.id("issuetype-field")).sendKeys("Bug");
+    driver.manage().timeouts().implicitlyWait(5,TimeUnit.SECONDS);
+    
+    //driver.findElement(By.id("assign-to-me-trigger")).click();
+    driver.findElement(By.name("description")).sendKeys(defect_Desc);
+    driver.findElement(By.name("summary")).click();
+    driver.findElement(By.name("summary")).sendKeys(Defect_Summ);
+        
+    driver.findElement(By.id("create-issue-submit")).click();
+    driver.manage().timeouts().implicitlyWait(20,TimeUnit.SECONDS);
+    
+   driver.findElement(By.id("quickSearchInput")).sendKeys(Defect_Summ);
+   driver.findElement(By.id("quickSearchInput")).sendKeys(Keys.ENTER);
+   String defectId=driver.findElement(By.cssSelector(".issue-link")).getText();
+   System.out.println(defectId);
+   
+   //dbinsert("Selenium",Defect_Summ,Defect_Desc,Build_Id,"Failed",defectId);
+}
+
+
+}
